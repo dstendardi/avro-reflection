@@ -7,10 +7,7 @@ import org.apache.avro.reflect.CustomEncoding;
 
 import java.io.IOException;
 
-/**
- * Created by dstendardi on 03/03/14.
- */
-abstract class MyCustomEncoding<T> extends CustomEncoding {
+abstract class MyCustomEncoding<T> extends CustomEncoding<T> {
 
     public Schema getSchema() {
         return schema;

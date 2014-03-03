@@ -2,13 +2,12 @@ package com.viadeo.avro.reflection;
 
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.Encoder;
-import org.apache.avro.reflect.CustomEncoding;
 import org.joda.time.DateTime;
 
 import java.io.IOException;
 
 
-public class NullableDateTimeEncoding extends CustomEncoding<DateTime> {
+public class NullableDateTimeEncoding extends MyCustomEncoding<DateTime> {
 
     private DateCustomEncoding dce = new DateCustomEncoding();
 

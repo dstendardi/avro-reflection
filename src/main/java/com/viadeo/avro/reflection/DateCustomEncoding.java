@@ -3,13 +3,12 @@ package com.viadeo.avro.reflection;
 import org.apache.avro.Schema;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.Encoder;
-import org.apache.avro.reflect.CustomEncoding;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 import java.io.IOException;
 
-public class DateCustomEncoding extends CustomEncoding<DateTime> {
+public class DateCustomEncoding extends MyCustomEncoding<DateTime> {
     {
         schema = Schema.create(Schema.Type.STRING);
         schema.addProp("tag", "inst");
