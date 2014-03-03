@@ -9,7 +9,7 @@ import org.joda.time.DateTimeZone;
 
 import java.io.IOException;
 
-public class DateCustomEncoder extends CustomEncoding<DateTime> {
+public class DateCustomEncoding extends CustomEncoding<DateTime> {
     {
         schema = Schema.create(Schema.Type.STRING);
         schema.addProp("tag", "inst");
@@ -22,11 +22,15 @@ public class DateCustomEncoder extends CustomEncoding<DateTime> {
 
     @Override
     protected DateTime read(Object reuse, Decoder in) throws IOException {
-        return new DateTime(in.readString());
+        return fromString(in.readString());
     }
 
-    protected Schema getSchema() {
+    public Schema getSchema() {
         return schema;
+    }
+
+    public static DateTime fromString(String in) {
+        return new DateTime(in);
     }
 
 }

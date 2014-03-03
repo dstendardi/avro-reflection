@@ -13,17 +13,17 @@ import java.io.ByteArrayOutputStream;
 
 import static org.junit.Assert.assertEquals;
 
-public class DateCustomEncoderUTest {
+public class DateCustomEncodingUTest {
 
     ByteArrayOutputStream out = new ByteArrayOutputStream();
 
     private JsonEncoder jsonEncoder;
-    private DateCustomEncoder encoder;
+    private DateCustomEncoding encoder;
     private ByteArrayInputStream input;
 
     @Before
     public void setUp() throws Exception {
-        encoder = new DateCustomEncoder();
+        encoder = new DateCustomEncoding();
         jsonEncoder = EncoderFactory.get().jsonEncoder(encoder.getSchema(), out);
     }
 
