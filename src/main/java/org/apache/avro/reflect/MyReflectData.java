@@ -4,7 +4,9 @@ import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.ResolvingDecoder;
-
+import org.objenesis.Objenesis;
+import org.objenesis.ObjenesisStd;
+import org.objenesis.instantiator.ObjectInstantiator;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -78,6 +80,18 @@ public class MyReflectData extends ReflectData.AllowNull {
         return new MyCustomDatumReader(writer, reader, this);
     }
 
+
+    @Override
+    public Object newRecord(Object old, Schema schema) {
+
+        Class clazz = getClass(schema);
+
+
+        Objenesis objenesis = new ObjenesisStd();
+        ObjectInstantiator instantiatorOf = objenesis.getInstantiatorOf(clazz);
+
+        return instantiatorOf.newInstance();
+    }
 
     public static class MyCustomDatumReader extends ReflectDatumReader {
         private final MyReflectData data;

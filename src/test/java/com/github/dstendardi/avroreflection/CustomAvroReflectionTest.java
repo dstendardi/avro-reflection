@@ -10,6 +10,9 @@ import org.apache.avro.reflect.ReflectDatumReader;
 import org.apache.avro.reflect.ReflectDatumWriter;
 import org.joda.time.DateTime;
 import org.junit.Test;
+import org.objenesis.Objenesis;
+import org.objenesis.ObjenesisStd;
+import org.objenesis.instantiator.ObjectInstantiator;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -23,14 +26,10 @@ public class CustomAvroReflectionTest {
 
     private BloatedEvent event = new BloatedEvent(new DateTime("2012-10-12"), "toto");
 
-
     public static class BloatedEvent {
 
-        private DateTime dateTime;
-        private String toto;
-
-        public BloatedEvent() {
-        }
+        private final DateTime dateTime;
+        private final String toto;
 
         public BloatedEvent(DateTime dateTime, String toto) {
             this.dateTime = dateTime;
@@ -101,4 +100,14 @@ public class CustomAvroReflectionTest {
         assertEquals(event, actual);
     }
 
+    @Test
+    public void testName() throws Exception {
+        Objenesis objenesis = new ObjenesisStd();
+        ObjectInstantiator<BloatedEvent> instantiatorOf = objenesis.getInstantiatorOf(BloatedEvent.class);
+
+        BloatedEvent bloatedEvent = instantiatorOf.newInstance();
+
+        System.out.println(bloatedEvent);
+
+    }
 }
