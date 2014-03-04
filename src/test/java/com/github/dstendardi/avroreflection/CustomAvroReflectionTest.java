@@ -1,12 +1,11 @@
 package com.github.dstendardi.avroreflection;
 
-import com.viadeo.avro.reflection.MyReflectData;
 import com.viadeo.avro.reflection.NullableDateTimeEncoding;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.reflect.AvroEncode;
+import org.apache.avro.reflect.MyReflectData;
 import org.apache.avro.reflect.ReflectDatumReader;
 import org.apache.avro.reflect.ReflectDatumWriter;
 import org.joda.time.DateTime;
@@ -20,24 +19,30 @@ import static org.junit.Assert.assertNotNull;
 
 public class CustomAvroReflectionTest {
 
-    MyReflectData MY_REFLECT_DATA = new MyReflectData().addEncorder(DateTime.class, new NullableDateTimeEncoding());
+    MyReflectData MY_REFLECT_DATA = new MyReflectData().addEncorder(DateTime.class, "inst", new NullableDateTimeEncoding());
 
-    private BloatedEvent event = new BloatedEvent(new DateTime("2012-10-12"));
+    private BloatedEvent event = new BloatedEvent(new DateTime("2012-10-12"), "toto");
 
 
     public static class BloatedEvent {
 
         private DateTime dateTime;
+        private String toto;
 
         public BloatedEvent() {
         }
 
-        public BloatedEvent(DateTime dateTime) {
+        public BloatedEvent(DateTime dateTime, String toto) {
             this.dateTime = dateTime;
+            this.toto = toto;
         }
 
         public DateTime getDateTime() {
             return dateTime;
+        }
+
+        public String getToto() {
+            return toto;
         }
 
         @Override
@@ -48,13 +53,16 @@ public class CustomAvroReflectionTest {
             BloatedEvent that = (BloatedEvent) o;
 
             if (dateTime != null ? !dateTime.equals(that.dateTime) : that.dateTime != null) return false;
+            if (toto != null ? !toto.equals(that.toto) : that.toto != null) return false;
 
             return true;
         }
 
         @Override
         public int hashCode() {
-            return dateTime != null ? dateTime.hashCode() : 0;
+            int result = dateTime != null ? dateTime.hashCode() : 0;
+            result = 31 * result + (toto != null ? toto.hashCode() : 0);
+            return result;
         }
     }
 
@@ -80,7 +88,7 @@ public class CustomAvroReflectionTest {
         encoder.flush();
         os.flush();
 
-        assertEquals("{\"dateTime\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"}}", os.toString("UTF-8"));
+        assertEquals("{\"dateTime\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"},\"toto\":{\"string\":\"toto\"}}", os.toString("UTF-8"));
     }
 
     @SuppressWarnings("unchecked")
@@ -88,7 +96,7 @@ public class CustomAvroReflectionTest {
     public void deserialization_with_custom_encoder() throws IOException {
 
         ReflectDatumReader<BloatedEvent> reader = (ReflectDatumReader<BloatedEvent>) MY_REFLECT_DATA.createDatumReader(SCHEMA);
-        BloatedEvent actual = reader.read(null, DecoderFactory.get().jsonDecoder(SCHEMA, "{\"dateTime\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"}}"));
+        BloatedEvent actual = reader.read(null, DecoderFactory.get().jsonDecoder(SCHEMA, "{\"dateTime\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"},\"toto\":{\"string\":\"toto\"}}"));
 
         assertEquals(event, actual);
     }

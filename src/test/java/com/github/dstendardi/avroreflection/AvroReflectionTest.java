@@ -1,12 +1,13 @@
 package com.github.dstendardi.avroreflection;
 
-import com.viadeo.avro.reflection.MyReflectData;
+
 import com.viadeo.avro.reflection.NullableDateTimeEncoding;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.reflect.AvroEncode;
+import org.apache.avro.reflect.MyReflectData;
 import org.apache.avro.reflect.ReflectDatumReader;
 import org.apache.avro.reflect.ReflectDatumWriter;
 import org.joda.time.DateTime;

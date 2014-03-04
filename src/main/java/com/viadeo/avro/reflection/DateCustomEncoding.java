@@ -3,6 +3,7 @@ package com.viadeo.avro.reflection;
 import org.apache.avro.Schema;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.Encoder;
+import org.apache.avro.reflect.MyCustomEncoding;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
@@ -16,7 +17,7 @@ public class DateCustomEncoding extends MyCustomEncoding<DateTime> {
 
     @Override
     protected void write(Object datum, Encoder out) throws IOException {
-        out.writeString(((DateTime) datum).toDateTime(DateTimeZone.forID("Europe/Paris")).toString());
+        out.writeString(encode((DateTime) datum));
     }
 
     @Override
@@ -26,6 +27,11 @@ public class DateCustomEncoding extends MyCustomEncoding<DateTime> {
 
     public Schema getSchema() {
         return schema;
+    }
+
+    @Override
+    public String encode(DateTime datum) {
+        return datum.toDateTime(DateTimeZone.forID("Europe/Paris")).toString();
     }
 
     public static DateTime fromString(String in) {
