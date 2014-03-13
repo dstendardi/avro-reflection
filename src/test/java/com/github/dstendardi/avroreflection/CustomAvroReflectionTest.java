@@ -29,9 +29,13 @@ public class CustomAvroReflectionTest {
     public static class BloatedEvent {
 
         private final DateTime dateTime;
-        private final String toto;
+        private String toto;
 
-        public BloatedEvent(DateTime dateTime, String toto) {
+		public BloatedEvent(DateTime dateTime) {
+			this.dateTime = dateTime;
+		}
+
+		public BloatedEvent(DateTime dateTime, String toto) {
             this.dateTime = dateTime;
             this.toto = toto;
         }
@@ -99,4 +103,28 @@ public class CustomAvroReflectionTest {
 
         assertEquals(event, actual);
     }
+
+
+	@Test
+	public void serialization_with_optional_parameter() throws Exception {
+
+		ReflectDatumWriter<BloatedEvent> writer = (ReflectDatumWriter<BloatedEvent>) MY_REFLECT_DATA.createDatumWriter(SCHEMA);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		Encoder encoder = EncoderFactory.get().jsonEncoder(SCHEMA, os);
+		writer.write(new BloatedEvent(new DateTime("2012-10-12")), encoder);
+		encoder.flush();
+		os.flush();
+
+		assertEquals("{\"dateTime\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"},\"toto\":null}", os.toString("UTF-8"));
+	}
+
+	@Test
+	public void deserialization_with_optional_parameter() throws Exception {
+
+		ReflectDatumReader<BloatedEvent> reader = (ReflectDatumReader<BloatedEvent>) MY_REFLECT_DATA.createDatumReader(SCHEMA);
+		BloatedEvent actual = reader.read(null, DecoderFactory.get().jsonDecoder(SCHEMA, "{\"dateTime\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"},\"toto\":null}"));
+
+		assertEquals(new BloatedEvent(new DateTime("2012-10-12")), actual);
+	}
 }
+

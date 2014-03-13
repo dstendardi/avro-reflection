@@ -60,6 +60,10 @@ public class MyReflectData extends ReflectData.AllowNull {
 
         Object field = super.getField(record, name, pos, state);
 
+		if (null == field) {
+			return null;
+		}
+
         MyCustomEncoding customEncoding = encoders.get(field.getClass());
 
         if (null != customEncoding) {
