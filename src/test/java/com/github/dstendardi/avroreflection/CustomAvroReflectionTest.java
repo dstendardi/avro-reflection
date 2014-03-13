@@ -10,9 +10,6 @@ import org.apache.avro.reflect.ReflectDatumReader;
 import org.apache.avro.reflect.ReflectDatumWriter;
 import org.joda.time.DateTime;
 import org.junit.Test;
-import org.objenesis.Objenesis;
-import org.objenesis.ObjenesisStd;
-import org.objenesis.instantiator.ObjectInstantiator;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -22,109 +19,219 @@ import static org.junit.Assert.assertNotNull;
 
 public class CustomAvroReflectionTest {
 
-    MyReflectData MY_REFLECT_DATA = new MyReflectData().addEncorder(DateTime.class, "inst", new NullableDateTimeEncoding());
+	MyReflectData MY_REFLECT_DATA = new MyReflectData().addEncorder(DateTime.class, "inst", new NullableDateTimeEncoding());
 
-    private BloatedEvent event = new BloatedEvent(new DateTime("2012-10-12"), "toto");
+	private ClassExtendingAGenericClass event = new ClassExtendingAGenericClass(new DateTime("2012-10-12"), "optionalField");
 
-    public static class BloatedEvent {
+	public static class GenericParentClass<T> {
 
-        private final DateTime dateTime;
-        private String toto;
+		private final T encodedField;
 
-		public BloatedEvent(DateTime dateTime) {
-			this.dateTime = dateTime;
+		public GenericParentClass(T encodedField) {
+			this.encodedField = encodedField;
 		}
 
-		public BloatedEvent(DateTime dateTime, String toto) {
-            this.dateTime = dateTime;
-            this.toto = toto;
-        }
+		public T getEncodedField() {
+			return encodedField;
+		}
 
-        public DateTime getDateTime() {
-            return dateTime;
-        }
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
 
-        public String getToto() {
-            return toto;
-        }
+			GenericParentClass that = (GenericParentClass) o;
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+			if (encodedField != null ? !encodedField.equals(that.encodedField) : that.encodedField != null) return false;
 
-            BloatedEvent that = (BloatedEvent) o;
+			return true;
+		}
 
-            if (dateTime != null ? !dateTime.equals(that.dateTime) : that.dateTime != null) return false;
-            if (toto != null ? !toto.equals(that.toto) : that.toto != null) return false;
+		@Override
+		public int hashCode() {
+			return encodedField != null ? encodedField.hashCode() : 0;
+		}
+	}
 
-            return true;
-        }
+	public static class ClassExtendingAGenericClass extends GenericParentClass<DateTime> {
 
-        @Override
-        public int hashCode() {
-            int result = dateTime != null ? dateTime.hashCode() : 0;
-            result = 31 * result + (toto != null ? toto.hashCode() : 0);
-            return result;
-        }
-    }
+		private String optionalField;
 
-    Schema SCHEMA = MY_REFLECT_DATA.getSchema(BloatedEvent.class);
 
-    @Test
-    public void schema_with_custom_encoder() throws Exception {
+		public ClassExtendingAGenericClass(DateTime encodedField) {
+			super(encodedField);
+		}
 
-        assertNotNull(SCHEMA.getField("dateTime"));
-        Schema dateTimeSchema = SCHEMA.getField("dateTime").schema().getTypes().get(1);
-        Schema.Type dateTime = dateTimeSchema.getType();
-        assertEquals(dateTime, Schema.Type.STRING);
-        assertEquals("inst", dateTimeSchema.getProp("tag"));
-    }
 
-    @Test
-    @SuppressWarnings("unchecked")
-    public void serialization_with_custom_encoder() throws Exception {
-        ReflectDatumWriter<BloatedEvent> writer = (ReflectDatumWriter<BloatedEvent>) MY_REFLECT_DATA.createDatumWriter(SCHEMA);
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        Encoder encoder = EncoderFactory.get().jsonEncoder(SCHEMA, os);
-        writer.write(event, encoder);
-        encoder.flush();
-        os.flush();
+		public ClassExtendingAGenericClass(DateTime encodedField, String optionalField) {
+			super(encodedField);
+			this.optionalField = optionalField;
+		}
 
-        assertEquals("{\"dateTime\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"},\"toto\":{\"string\":\"toto\"}}", os.toString("UTF-8"));
-    }
 
-    @SuppressWarnings("unchecked")
-    @Test
-    public void deserialization_with_custom_encoder() throws IOException {
+		public String getOptionalField() {
+			return optionalField;
+		}
 
-        ReflectDatumReader<BloatedEvent> reader = (ReflectDatumReader<BloatedEvent>) MY_REFLECT_DATA.createDatumReader(SCHEMA);
-        BloatedEvent actual = reader.read(null, DecoderFactory.get().jsonDecoder(SCHEMA, "{\"dateTime\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"},\"toto\":{\"string\":\"toto\"}}"));
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
 
-        assertEquals(event, actual);
-    }
+			ClassExtendingAGenericClass that = (ClassExtendingAGenericClass) o;
+
+			if (optionalField != null ? !optionalField.equals(that.optionalField) : that.optionalField != null) return false;
+
+			return true;
+		}
+
+		@Override
+		public int hashCode() {
+			return optionalField != null ? optionalField.hashCode() : 0;
+		}
+
+
+	}
+
+	public static class WrappedGenericField<T> {
+		private final T wrappedGenericField;
+
+		public WrappedGenericField(T wrappedGenericField) {
+			this.wrappedGenericField = wrappedGenericField;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			WrappedGenericField that = (WrappedGenericField) o;
+
+			if (wrappedGenericField != null ? !wrappedGenericField.equals(that.wrappedGenericField) : that.wrappedGenericField != null) return false;
+
+			return true;
+		}
+
+		@Override
+		public int hashCode() {
+			return wrappedGenericField != null ? wrappedGenericField.hashCode() : 0;
+		}
+	}
+
+	public static class ClassWithOneUnmaterializedField {
+		private final WrappedGenericField<String> wrappedGenericField;
+
+		public ClassWithOneUnmaterializedField(WrappedGenericField<String> wrappedGenericField) {
+			this.wrappedGenericField = wrappedGenericField;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			ClassWithOneUnmaterializedField that = (ClassWithOneUnmaterializedField) o;
+
+			if (wrappedGenericField != null ? !wrappedGenericField.equals(that.wrappedGenericField) : that.wrappedGenericField != null) return false;
+
+			return true;
+		}
+
+		@Override
+		public int hashCode() {
+			return wrappedGenericField != null ? wrappedGenericField.hashCode() : 0;
+		}
+	}
+
+
+
+	Schema BLOATED_YOLO_EVENT_SCHEMA = MY_REFLECT_DATA.getSchema(ClassWithOneUnmaterializedField.class);
+	Schema SCHEMA = MY_REFLECT_DATA.getSchema(ClassExtendingAGenericClass.class);
+
+	@Test
+	public void schema_with_multiple_parametrized_fields() throws Exception {
+		System.out.println(BLOATED_YOLO_EVENT_SCHEMA);
+	}
+
+	@Test
+	public void schema_with_custom_encoder() throws Exception {
+
+		assertNotNull(SCHEMA.getField("encodedField"));
+		Schema dateTimeSchema = SCHEMA.getField("encodedField").schema().getTypes().get(1);
+		Schema.Type dateTime = dateTimeSchema.getType();
+		assertEquals(dateTime, Schema.Type.STRING);
+		assertEquals("inst", dateTimeSchema.getProp("tag"));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	public void serialization_with_custom_encoder() throws Exception {
+		ReflectDatumWriter<ClassExtendingAGenericClass> writer = (ReflectDatumWriter<ClassExtendingAGenericClass>) MY_REFLECT_DATA.createDatumWriter(SCHEMA);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		Encoder encoder = EncoderFactory.get().jsonEncoder(SCHEMA, os);
+		writer.write(event, encoder);
+		encoder.flush();
+		os.flush();
+
+		assertEquals("{\"optionalField\":{\"string\":\"optionalField\"},\"encodedField\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"}}", os.toString("UTF-8"));
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void deserialization_with_custom_encoder() throws IOException {
+
+		ReflectDatumReader<ClassExtendingAGenericClass> reader = (ReflectDatumReader<ClassExtendingAGenericClass>) MY_REFLECT_DATA.createDatumReader(SCHEMA);
+		ClassExtendingAGenericClass actual = reader.read(null, DecoderFactory.get().jsonDecoder(SCHEMA, "{\"encodedField\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"},\"optionalField\":{\"string\":\"optionalField\"}}"));
+
+		assertEquals(event, actual);
+	}
 
 
 	@Test
 	public void serialization_with_optional_parameter() throws Exception {
 
-		ReflectDatumWriter<BloatedEvent> writer = (ReflectDatumWriter<BloatedEvent>) MY_REFLECT_DATA.createDatumWriter(SCHEMA);
+		ReflectDatumWriter<ClassExtendingAGenericClass> writer = (ReflectDatumWriter<ClassExtendingAGenericClass>) MY_REFLECT_DATA.createDatumWriter(SCHEMA);
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
 		Encoder encoder = EncoderFactory.get().jsonEncoder(SCHEMA, os);
-		writer.write(new BloatedEvent(new DateTime("2012-10-12")), encoder);
+		writer.write(new ClassExtendingAGenericClass(new DateTime("2012-10-12")), encoder);
 		encoder.flush();
 		os.flush();
 
-		assertEquals("{\"dateTime\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"},\"toto\":null}", os.toString("UTF-8"));
+		assertEquals("{\"optionalField\":null,\"encodedField\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"}}", os.toString("UTF-8"));
 	}
 
 	@Test
 	public void deserialization_with_optional_parameter() throws Exception {
 
-		ReflectDatumReader<BloatedEvent> reader = (ReflectDatumReader<BloatedEvent>) MY_REFLECT_DATA.createDatumReader(SCHEMA);
-		BloatedEvent actual = reader.read(null, DecoderFactory.get().jsonDecoder(SCHEMA, "{\"dateTime\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"},\"toto\":null}"));
+		ReflectDatumReader<ClassExtendingAGenericClass> reader = (ReflectDatumReader<ClassExtendingAGenericClass>) MY_REFLECT_DATA.createDatumReader(SCHEMA);
+		ClassExtendingAGenericClass actual = reader.read(null, DecoderFactory.get().jsonDecoder(SCHEMA, "{\"encodedField\":{\"string\":\"2012-10-12T00:00:00.000+02:00\"},\"optionalField\":null}"));
 
-		assertEquals(new BloatedEvent(new DateTime("2012-10-12")), actual);
+		assertEquals(new ClassExtendingAGenericClass(new DateTime("2012-10-12")), actual);
 	}
+
+
+	@Test
+	public void serialization_with_parametrized_type() throws Exception {
+
+		ReflectDatumWriter<ClassWithOneUnmaterializedField> writer = (ReflectDatumWriter<ClassWithOneUnmaterializedField>) MY_REFLECT_DATA.createDatumWriter(BLOATED_YOLO_EVENT_SCHEMA);
+		ByteArrayOutputStream os = new ByteArrayOutputStream();
+		Encoder encoder = EncoderFactory.get().jsonEncoder(BLOATED_YOLO_EVENT_SCHEMA, os);
+		writer.write(new ClassWithOneUnmaterializedField(new WrappedGenericField<String>("optionalField")), encoder);
+		encoder.flush();
+		os.flush();
+
+
+		assertEquals("{\"wrappedGenericField\":{\"com.github.dstendardi.avroreflection.CustomAvroReflectionTest$.WrappedGenericField\":{\"wrappedGenericField\":{\"string\":\"optionalField\"}}}}", os.toString("UTF-8"));
+	}
+
+	@Test
+	public void deserialization_with_parametrized_type() throws Exception {
+
+		ReflectDatumReader<ClassWithOneUnmaterializedField> reader = (ReflectDatumReader<ClassWithOneUnmaterializedField>) MY_REFLECT_DATA.createDatumReader(BLOATED_YOLO_EVENT_SCHEMA);
+		ClassWithOneUnmaterializedField actual = reader.read(null, DecoderFactory.get().jsonDecoder(BLOATED_YOLO_EVENT_SCHEMA, "{\"wrappedGenericField\":{\"com.github.dstendardi.avroreflection.CustomAvroReflectionTest$.WrappedGenericField\":{\"wrappedGenericField\":{\"string\":\"optionalField\"}}}}"));
+
+		assertEquals(new ClassWithOneUnmaterializedField(new WrappedGenericField<String>("optionalField")), actual);
+	}
+
 }
 
