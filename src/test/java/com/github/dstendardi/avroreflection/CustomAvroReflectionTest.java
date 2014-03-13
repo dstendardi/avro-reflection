@@ -99,15 +99,4 @@ public class CustomAvroReflectionTest {
 
         assertEquals(event, actual);
     }
-
-    @Test
-    public void testName() throws Exception {
-        Objenesis objenesis = new ObjenesisStd();
-        ObjectInstantiator<BloatedEvent> instantiatorOf = objenesis.getInstantiatorOf(BloatedEvent.class);
-
-        BloatedEvent bloatedEvent = instantiatorOf.newInstance();
-
-        System.out.println(bloatedEvent);
-
-    }
 }
