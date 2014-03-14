@@ -4,6 +4,7 @@ package org.apache.avro.reflect;
 import org.apache.avro.Schema;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.Encoder;
+
 import java.io.IOException;
 
 public abstract class MyCustomEncoding<T> extends CustomEncoding<T> {
