@@ -1,5 +1,6 @@
 package com.github.dstendardi.avroreflection;
 
+import com.viadeo.avro.reflection.DateCustomEncoding;
 import com.viadeo.avro.reflection.NullableDateTimeEncoding;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DecoderFactory;
@@ -19,7 +20,7 @@ import static org.junit.Assert.assertNotNull;
 
 public class CustomAvroReflectionTest {
 
-	MyReflectData MY_REFLECT_DATA = new MyReflectData().addEncorder(DateTime.class, "inst", new NullableDateTimeEncoding());
+	MyReflectData MY_REFLECT_DATA = new MyReflectData().addEncorder(DateTime.class, "inst", new DateCustomEncoding());
 
 	private ClassExtendingAGenericClass event = new ClassExtendingAGenericClass(new DateTime("2012-10-12"), "optionalField");
 

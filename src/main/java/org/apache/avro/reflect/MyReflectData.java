@@ -1,6 +1,5 @@
 package org.apache.avro.reflect;
 
-import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.ResolvingDecoder;
@@ -19,163 +18,160 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class MyReflectData extends ReflectData.AllowNull {
 
-	private static final MyReflectData INSTANCE = new MyReflectData();
+    private static final MyReflectData INSTANCE = new MyReflectData();
 
-	private Map<Class, MyCustomEncoding> encoders;
-	protected Map<String, MyCustomEncoding> tags;
+    private Map<Class, MyCustomEncoding> encoders;
+    protected Map<String, MyCustomEncoding> tags;
 
-	private Map<TypeVariable, Type> mCacheOfGenericReflection;
+    private Map<TypeVariable, Type> mCacheOfGenericReflection;
 
-	public static MyReflectData get() {
-		return INSTANCE;
-	}
+    public static MyReflectData get() {
+        return INSTANCE;
+    }
 
-	public MyReflectData() {
-		super();
-		this.encoders = new HashMap<Class, MyCustomEncoding>();
-		this.tags = new HashMap<String, MyCustomEncoding>();
-		this.mCacheOfGenericReflection = new HashMap<TypeVariable, Type>();
-	}
-
-
-	public MyReflectData addEncorder(Class clazz, String tag, MyCustomEncoding customEncoding) {
-
-		this.encoders.put(checkNotNull(clazz), checkNotNull(customEncoding));
-		this.tags.put(checkNotNull(tag), checkNotNull(customEncoding));
-
-		return this;
-	}
+    public MyReflectData() {
+        super();
+        this.encoders = new HashMap<Class, MyCustomEncoding>();
+        this.tags = new HashMap<String, MyCustomEncoding>();
+        this.mCacheOfGenericReflection = new HashMap<TypeVariable, Type>();
+    }
 
 
-	@Override
-	protected Object getField(Object record, String name, int pos, Object state) {
+    public MyReflectData addEncorder(Class clazz, String tag, MyCustomEncoding customEncoding) {
+        this.encoders.put(checkNotNull(clazz), checkNotNull(customEncoding));
+        this.tags.put(checkNotNull(tag), checkNotNull(customEncoding));
 
-		Object field = super.getField(record, name, pos, state);
+        return this;
+    }
 
-		if (null == field) {
-			return null;
-		}
+    //*********** WRITING ********************//
+    @Override
+    protected Object getField(Object record, String name, int pos, Object state) {
 
-		MyCustomEncoding customEncoding = encoders.get(field.getClass());
+        Object field = super.getField(record, name, pos, state);
 
-		if (null != customEncoding) {
-			//noinspection unchecked
-			return customEncoding.encode(field);
-		} else {
-			return field;
-		}
-	}
+        if (null == field) {
+            return null;
+        }
 
-	@Override
-	public DatumReader createDatumReader(Schema schema) {
-		return createDatumReader(schema, schema);
-	}
+        MyCustomEncoding customEncoding = encoders.get(field.getClass());
 
-	@Override
-	public DatumReader createDatumReader(Schema writer, Schema reader) {
-		return new MyCustomDatumReader(writer, reader, this);
-	}
+        if (null != customEncoding) {
+            //noinspection unchecked
+            return customEncoding.encode(field);
+        } else {
+            return field;
+        }
+    }
 
 
-	@Override
-	public Object newRecord(Object old, Schema schema) {
+    //*************** READING *****************//
 
-		Class clazz = getClass(schema);
+    /**
+     * need to be overrided, to support class without empty constructor
+     */
+    @Override
+    public Object newRecord(Object old, Schema schema) {
 
-
-		Objenesis objenesis = new ObjenesisStd();
-		ObjectInstantiator instantiatorOf = objenesis.getInstantiatorOf(clazz);
-
-		return instantiatorOf.newInstance();
-	}
-
-	public static class MyCustomDatumReader extends ReflectDatumReader {
-		private final MyReflectData data;
+        Class clazz = getClass(schema);
 
 
-		public MyCustomDatumReader(Schema writer, Schema reader, MyReflectData data) {
-			super(writer, reader, data);
-			this.data = data;
-		}
+        Objenesis objenesis = new ObjenesisStd();
+        ObjectInstantiator instantiatorOf = objenesis.getInstantiatorOf(clazz);
 
-		@Override
-		protected void readField(Object record, Schema.Field f, Object oldDatum, ResolvingDecoder in, Object state) throws IOException {
-			try {
-				if (f.schema().getType() == Schema.Type.UNION) {
-					Schema schema = f.schema().getTypes().get(1);
-					MyCustomEncoding customEncoding = data.tags.get(schema.getProp("tag"));
-					if (null != customEncoding) {
-						if (state != null) {
-							FieldAccessor accessor = ((FieldAccessor[]) state)[f.pos()];
-							if (accessor != null) {
-								accessor.set(record, customEncoding.read(null, in));
-							}
-						}
-						return;
-					}
-				}
-			} catch (Exception e) {
-				throw new AvroRuntimeException("Failed to read custom", e);
-			}
-
-			super.readField(record, f, oldDatum, in, state);
-		}
-	}
+        return instantiatorOf.newInstance();
+    }
 
 
-	@Override
-	protected Schema createSchema(Type type, Map<String, Schema> names) {
+    @Override
+    public DatumReader createDatumReader(Schema schema) {
+        return createDatumReader(schema, schema);
+    }
 
-		inspectClass(type);
-
-		MyCustomEncoding customEncoding = encoders.get(type);
-		if (null != customEncoding) {
-			return customEncoding.getSchema();
-		}
-
-		Type replacementType = mCacheOfGenericReflection.get(type);
-		if (replacementType != null) {
-			return createSchema(replacementType, names);
-		}
-
-		return super.createSchema(type, names);
-	}
-
-	private void inspectClass(Type type) {
-		if (type instanceof Class) {
-			Class classType = (Class) type;
-
-			/*for (Type i : classType.getGenericInterfaces()) {
-				inspectClass(i);
-			}*/
-			inspectClass(classType.getGenericSuperclass());
-		}
-
-		if (type instanceof ParameterizedType) {
-			ParameterizedType ptype = (ParameterizedType) type;
-			Type[] actualTypeArguments = ptype.getActualTypeArguments();
-			TypeVariable[] tps = ((Class) ptype.getRawType()).getTypeParameters();
-
-			for (int i = 0; i < tps.length; i++) {
-				addReplacement(actualTypeArguments[i], tps[i]);
-			}
-		}
+    @Override
+    public DatumReader createDatumReader(Schema writer, Schema reader) {
+        return new MyCustomDatumReader(writer, reader, this);
+    }
 
 
+    /**
+     * need to overload `read` to support custom decoding
+     */
+    public static class MyCustomDatumReader extends ReflectDatumReader {
+        private final MyReflectData data;
 
 
-	}
+        public MyCustomDatumReader(Schema writer, Schema reader, MyReflectData data) {
+            super(writer, reader, data);
+            this.data = data;
+        }
 
-	private void addReplacement(Type actualTypeArgument, TypeVariable tp) {
-		if(actualTypeArgument instanceof Class) {
+        @Override
+        protected Object read(Object old, Schema expected, ResolvingDecoder in) throws IOException {
+            MyCustomEncoding customEncoding = data.tags.get(expected.getProp("tag"));
+            if (customEncoding != null) {
+                return customEncoding.read(null, in);
+            }
 
-			String canonicalName = ((Class)actualTypeArgument).getCanonicalName();
+            return super.read(old, expected, in);
+        }
 
-			if(canonicalName.startsWith("org.apache.avro")
-					|| canonicalName.startsWith("org.codehaus.jackson")) {
-				return;
-			}
-		}
-		mCacheOfGenericReflection.put(tp, actualTypeArgument);
-	}
+    }
+
+
+    //***************** SCHEMA CREATION **************//
+
+
+    @Override
+    protected Schema createSchema(Type type, Map<String, Schema> names) {
+
+        inspectClass(type);
+
+        MyCustomEncoding customEncoding = encoders.get(type);
+        if (null != customEncoding) {
+            return customEncoding.getSchema();
+        }
+
+        Type replacementType = mCacheOfGenericReflection.get(type);
+        if (replacementType != null) {
+            return createSchema(replacementType, names);
+        }
+
+        return super.createSchema(type, names);
+    }
+
+
+    /**
+     * inspect by reflection the class hierarchy to initialize a replacement map.
+     * <p/>
+     * The map contains information such as :
+     * { blabla.GenericParentClass.T   org.joda.time.DateTime,
+     * blabla.GenericParentClass2.K  java.lang.String }
+     *
+     * @param type the type to inspect
+     */
+    private void inspectClass(Type type) {
+        // inspect parent
+        if (type instanceof Class) {
+            Class classType = (Class) type;
+
+            inspectClass(classType.getGenericSuperclass());
+        }
+
+        // if the current type is a generic
+        if (type instanceof ParameterizedType) {
+            ParameterizedType ptype = (ParameterizedType) type;
+            Type[] actualTypeArguments = ptype.getActualTypeArguments();
+            TypeVariable[] tps = ((Class) ptype.getRawType()).getTypeParameters();
+
+            // for each couple of [typeVariable actualType] ( [T java.lang.String] )
+            for (int i = 0; i < tps.length; i++) {
+                addReplacement(actualTypeArguments[i], tps[i]);
+            }
+        }
+    }
+
+    private void addReplacement(Type actualTypeArgument, TypeVariable tp) {
+        mCacheOfGenericReflection.put(tp, actualTypeArgument);
+    }
 }
