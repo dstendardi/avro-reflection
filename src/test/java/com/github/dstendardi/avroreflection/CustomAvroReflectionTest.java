@@ -1,8 +1,8 @@
 package com.github.dstendardi.avroreflection;
 
 import com.viadeo.avro.reflection.DateCustomEncoding;
-import com.viadeo.avro.reflection.NullableDateTimeEncoding;
 import org.apache.avro.Schema;
+import org.apache.avro.UnresolvedUnionException;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
@@ -10,17 +10,23 @@ import org.apache.avro.reflect.MyReflectData;
 import org.apache.avro.reflect.ReflectDatumReader;
 import org.apache.avro.reflect.ReflectDatumWriter;
 import org.joda.time.DateTime;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class CustomAvroReflectionTest {
 
-	MyReflectData MY_REFLECT_DATA = new MyReflectData().addEncorder(DateTime.class, "inst", new DateCustomEncoding());
+    @Rule
+    public ExpectedException exception = ExpectedException.none();
+
+    MyReflectData MY_REFLECT_DATA = new MyReflectData().addEncorder(DateTime.class, "inst", new DateCustomEncoding());
 
 	private ClassExtendingAGenericClass event = new ClassExtendingAGenericClass(new DateTime("2012-10-12"), "optionalField");
 
@@ -120,10 +126,10 @@ public class CustomAvroReflectionTest {
 	}
 
 	public static class ClassWithOneUnmaterializedField {
-		private final WrappedGenericField<String> wrappedGenericField;
+		private final WrappedGenericField<String> one;
 
 		public ClassWithOneUnmaterializedField(WrappedGenericField<String> wrappedGenericField) {
-			this.wrappedGenericField = wrappedGenericField;
+			this.one = wrappedGenericField;
 		}
 
 		@Override
@@ -133,26 +139,43 @@ public class CustomAvroReflectionTest {
 
 			ClassWithOneUnmaterializedField that = (ClassWithOneUnmaterializedField) o;
 
-			if (wrappedGenericField != null ? !wrappedGenericField.equals(that.wrappedGenericField) : that.wrappedGenericField != null) return false;
+			if (one != null ? !one.equals(that.one) : that.one != null) return false;
 
 			return true;
 		}
 
 		@Override
 		public int hashCode() {
-			return wrappedGenericField != null ? wrappedGenericField.hashCode() : 0;
+			return one != null ? one.hashCode() : 0;
 		}
 	}
 
+    public static class ClassWithTwoUnmaterializedField {
+        private final WrappedGenericField<String> one;
+        private final WrappedGenericField<Long> two;
+
+        public ClassWithTwoUnmaterializedField(WrappedGenericField<String> wrappedGenericField, WrappedGenericField<Long> two) {
+            this.one = wrappedGenericField;
+            this.two = two;
+        }
+    }
 
 
-	Schema BLOATED_YOLO_EVENT_SCHEMA = MY_REFLECT_DATA.getSchema(ClassWithOneUnmaterializedField.class);
+    public static class BloatedWrapper {
+        private final ClassWithTwoUnmaterializedField value;
+
+
+        public BloatedWrapper(ClassWithTwoUnmaterializedField value) {
+            this.value = value;
+        }
+    }
+
+
+
+	Schema SCHEMA_WITH_ONE_PARAMETRIZED_TYPE = MY_REFLECT_DATA.getSchema(ClassWithOneUnmaterializedField.class);
 	Schema SCHEMA = MY_REFLECT_DATA.getSchema(ClassExtendingAGenericClass.class);
 
-	@Test
-	public void schema_with_multiple_parametrized_fields() throws Exception {
-		System.out.println(BLOATED_YOLO_EVENT_SCHEMA);
-	}
+
 
 	@Test
 	public void schema_with_custom_encoder() throws Exception {
@@ -214,25 +237,46 @@ public class CustomAvroReflectionTest {
 	@Test
 	public void serialization_with_parametrized_type() throws Exception {
 
-		ReflectDatumWriter<ClassWithOneUnmaterializedField> writer = (ReflectDatumWriter<ClassWithOneUnmaterializedField>) MY_REFLECT_DATA.createDatumWriter(BLOATED_YOLO_EVENT_SCHEMA);
+		ReflectDatumWriter<ClassWithOneUnmaterializedField> writer = (ReflectDatumWriter<ClassWithOneUnmaterializedField>) MY_REFLECT_DATA.createDatumWriter(SCHEMA_WITH_ONE_PARAMETRIZED_TYPE);
 		ByteArrayOutputStream os = new ByteArrayOutputStream();
-		Encoder encoder = EncoderFactory.get().jsonEncoder(BLOATED_YOLO_EVENT_SCHEMA, os);
+		Encoder encoder = EncoderFactory.get().jsonEncoder(SCHEMA_WITH_ONE_PARAMETRIZED_TYPE, os);
 		writer.write(new ClassWithOneUnmaterializedField(new WrappedGenericField<String>("optionalField")), encoder);
 		encoder.flush();
 		os.flush();
 
 
-		assertEquals("{\"wrappedGenericField\":{\"com.github.dstendardi.avroreflection.CustomAvroReflectionTest$.WrappedGenericField\":{\"wrappedGenericField\":{\"string\":\"optionalField\"}}}}", os.toString("UTF-8"));
+		assertEquals("{\"one\":{\"com.github.dstendardi.avroreflection.CustomAvroReflectionTest$.WrappedGenericField\":{\"wrappedGenericField\":{\"string\":\"optionalField\"}}}}", os.toString("UTF-8"));
 	}
 
 	@Test
 	public void deserialization_with_parametrized_type() throws Exception {
 
-		ReflectDatumReader<ClassWithOneUnmaterializedField> reader = (ReflectDatumReader<ClassWithOneUnmaterializedField>) MY_REFLECT_DATA.createDatumReader(BLOATED_YOLO_EVENT_SCHEMA);
-		ClassWithOneUnmaterializedField actual = reader.read(null, DecoderFactory.get().jsonDecoder(BLOATED_YOLO_EVENT_SCHEMA, "{\"wrappedGenericField\":{\"com.github.dstendardi.avroreflection.CustomAvroReflectionTest$.WrappedGenericField\":{\"wrappedGenericField\":{\"string\":\"optionalField\"}}}}"));
+		ReflectDatumReader<ClassWithOneUnmaterializedField> reader = (ReflectDatumReader<ClassWithOneUnmaterializedField>) MY_REFLECT_DATA.createDatumReader(SCHEMA_WITH_ONE_PARAMETRIZED_TYPE);
+		ClassWithOneUnmaterializedField actual = reader.read(null, DecoderFactory.get().jsonDecoder(SCHEMA_WITH_ONE_PARAMETRIZED_TYPE, "{\"one\":{\"com.github.dstendardi.avroreflection.CustomAvroReflectionTest$.WrappedGenericField\":{\"wrappedGenericField\":{\"string\":\"optionalField\"}}}}"));
 
 		assertEquals(new ClassWithOneUnmaterializedField(new WrappedGenericField<String>("optionalField")), actual);
 	}
+
+
+    @Test
+    public void serialization_with_two_parametrized_type() throws Exception {
+
+        exception.expect(RuntimeException.class);
+        exception.expectMessage(containsString("you cannot have several generics members for the same class 'com.github.dstendardi.avroreflection.CustomAvroReflectionTest.WrappedGenericField"));
+
+        MY_REFLECT_DATA.getSchema(ClassWithTwoUnmaterializedField.class);
+    }
+
+    @Test
+    public void serialization_with_two_parametrized_type_wrapped() throws Exception {
+
+        exception.expect(RuntimeException.class);
+        exception.expectMessage(containsString("you cannot have several generics members for the same class 'com.github.dstendardi.avroreflection.CustomAvroReflectionTest.WrappedGenericField"));
+
+        MY_REFLECT_DATA.getSchema(BloatedWrapper.class);
+    }
+
+
 
 }
 

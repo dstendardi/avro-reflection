@@ -8,6 +8,7 @@ import org.objenesis.ObjenesisStd;
 import org.objenesis.instantiator.ObjectInstantiator;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -125,7 +126,10 @@ public class MyReflectData extends ReflectData.AllowNull {
     @Override
     protected Schema createSchema(Type type, Map<String, Schema> names) {
 
+        guardSchemaCreation(type);
+
         inspectClass(type);
+
 
         MyCustomEncoding customEncoding = encoders.get(type);
         if (null != customEncoding) {
@@ -140,13 +144,40 @@ public class MyReflectData extends ReflectData.AllowNull {
         return super.createSchema(type, names);
     }
 
+    protected void guardSchemaCreation(Type type) {
+        if (type instanceof Class) {
+            Map<String, String> countDumClass = new HashMap<String, String>();
+            Class<?> c = (Class<?>) type;
+            do {
+                for (Field field : c.getDeclaredFields()) {
+                    Type genericType = field.getGenericType();
+                    if (genericType instanceof ParameterizedType) {
+                        String name = ((Class) ((ParameterizedType) genericType).getRawType()).getCanonicalName();
+                        String otherWhere = countDumClass.get(name);
+                        String where = c.getCanonicalName() + "/" + field.getName();
+                        if (otherWhere != null) {
+                            String format = String.format("you cannot have several generics members for the same class '%s' : \n %s \n %s ", name, otherWhere, where);
+                            throw new RuntimeException(format);
+                        }
+                        countDumClass.put(name, where);
+                    }
+                }
+                c = c.getSuperclass();
+            } while (c != null);
+        }
+    }
+
+
+
 
     /**
      * inspect by reflection the class hierarchy to initialize a replacement map.
      * <p/>
      * The map contains information such as :
-     * { blabla.GenericParentClass.T   org.joda.time.DateTime,
-     * blabla.GenericParentClass2.K  java.lang.String }
+     * {
+     * blabla.GenericParentClass.T   org.joda.time.DateTime,
+     * blabla.GenericParentClass2.K  java.lang.String
+     * }
      *
      * @param type the type to inspect
      */
